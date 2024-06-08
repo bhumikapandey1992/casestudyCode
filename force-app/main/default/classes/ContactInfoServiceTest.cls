@@ -8,12 +8,12 @@ private class ContactInfoServiceTest {
         );
         insert product;
 
-        // Get the standard pricebook
-        Pricebook2 standardPricebook = [SELECT Id FROM Pricebook2 WHERE IsStandard = true LIMIT 1];
+        // Ensure the standard pricebook exists and get its Id
+        Id standardPricebookId = Test.getStandardPricebookId();
 
         // Create a standard PricebookEntry for the product
         PricebookEntry standardPricebookEntry = new PricebookEntry(
-            Pricebook2Id = standardPricebook.Id,
+            Pricebook2Id = standardPricebookId,
             Product2Id = product.Id,
             UnitPrice = 0,
             IsActive = true
