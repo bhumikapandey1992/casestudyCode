@@ -1,0 +1,18 @@
+<template>
+    <lightning-card title="Product Information">
+        <div class="slds-m-around_medium">
+            <template if:true={productDetails}>
+                <lightning-datatable
+                    key-field="id"
+                    data={productDetails}
+                    columns={columns}
+                    onrowaction={handleRowAction}>
+                </lightning-datatable>
+            </template>
+            <template if:false={productDetails}>
+                <p>No product information available.</p>
+            </template>
+        </div>
+    </lightning-card>
+    <c-product-edit-modal product-id={productId} onproductupdated={handleProductUpdated}></c-product-edit-modal>
+</template>
