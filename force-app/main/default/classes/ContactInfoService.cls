@@ -29,14 +29,28 @@ global with sharing class ContactInfoService {
             return '{"status": "Contact not found", "contactInfo": null}';
         }
 
-        // Query the Product record associated with the contact
-        Product2 productRecord = [SELECT Name, Cost_Per_Calendar_Month__c, ATM_Fee_Other_Currencies__c, Card_Replacement_Cost__c, Country__c 
-                                  FROM Product2 
-                                  WHERE Id = :contactRecord.Product__c 
-                                  LIMIT 1];
+        // Query the PricebookEntry record associated with the contact's product and home country
+        PricebookEntry pricebookEntry;
+        try {
+            pricebookEntry = [SELECT Product2.Name, Cost_Per_Calendar_Month__c, ATM_Fee_in_Other_Currencies__c, Card_Replacement_Cost__c, Pricebook2.Country__c 
+                              FROM PricebookEntry 
+                              WHERE Product2Id = :contactRecord.Product__c
+                              AND Pricebook2.Country__c = :contactRecord.Home_Country__c
+                              AND IsActive = true
+                              LIMIT 1];
+        } catch (QueryException e) {
+            res.statusCode = 404;
+            return '{"status": "PricebookEntry not found", "contactInfo": null}';
+        }
+
+        // If no pricebook entry is found, return a 404 response
+        if (pricebookEntry == null) {
+            res.statusCode = 404;
+            return '{"status": "PricebookEntry not found", "contactInfo": null}';
+        }
 
         // Create the response object
-        ContactResponse response = new ContactResponse('Success', new ContactInfo(contactRecord, productRecord));
+        ContactResponse response = new ContactResponse('Success', new ContactInfo(contactRecord, pricebookEntry));
 
         // Return the JSON-serialized response
         return JSON.serialize(response);
@@ -65,16 +79,16 @@ global with sharing class ContactInfoService {
         public String atmFee;
         public String replacementCost;
 
-        public ContactInfo(Contact contact, Product2 product) {
+        public ContactInfo(Contact contact, PricebookEntry pricebookEntry) {
             this.firstName = contact.FirstName;
             this.lastName = contact.LastName;
             this.email = contact.Email;
             this.phone = contact.Phone;
-            this.productName = product.Name;
+            this.productName = pricebookEntry.Product2.Name;
             this.homeCountry = contact.Home_Country__c;
-            this.costPerMonth = product.Cost_Per_Calendar_Month__c;
-            this.atmFee = product.ATM_Fee_Other_Currencies__c;
-            this.replacementCost = product.Card_Replacement_Cost__c;
+            this.costPerMonth = pricebookEntry.Cost_Per_Calendar_Month__c;
+            this.atmFee = pricebookEntry.ATM_Fee_in_Other_Currencies__c;
+            this.replacementCost = pricebookEntry.Card_Replacement_Cost__c;
         }
     }
 }

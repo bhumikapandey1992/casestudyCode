@@ -1,22 +1,21 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import getContactProductDetails from '@salesforce/apex/CaseContactProductController.getContactProductDetails';
-import { deleteRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { deleteRecord } from 'lightning/uiRecordApi';
 import { refreshApex } from '@salesforce/apex';
 
 export default class CaseContactProduct extends LightningElement {
     @api recordId; // This is the Case Id
-    @track productDetails; // Holds the product details to be displayed
-    homeCountry; // Stores the home country of the contact
-    productId; // Stores the current product Id for editing
+    @track productDetails = []; // Array to hold product details
+    productId; // Variable to hold the product Id for editing
 
-    // Defines the columns for the Lightning Data Table
+    // Columns definition for the datatable
     columns = [
         { label: 'Product Name', fieldName: 'productName', type: 'text' },
-        { label: 'Home Country', fieldName: 'homeCountry', type: 'text' },
-        { label: 'Cost per Calendar Month', fieldName: 'costPerMonth', type: 'text' },
+        { label: 'Pricebook Name', fieldName: 'pricebookName', type: 'text' },
+        { label: 'Cost per Calendar Month', fieldName: 'costPerMonth', type: 'currency' },
         { label: 'ATM Fee in Other Currencies', fieldName: 'atmFee', type: 'text' },
-        { label: 'Card Replacement Cost', fieldName: 'replacementCost', type: 'text' },
+        { label: 'Card Replacement Cost', fieldName: 'replacementCost', type: 'currency' },
         {
             type: 'action',
             typeAttributes: {
@@ -28,36 +27,31 @@ export default class CaseContactProduct extends LightningElement {
         }
     ];
 
-    // Wire adapter to call the Apex method and fetch product details for the contact associated with the case
+    // Wired method to fetch product details from Apex
     @wire(getContactProductDetails, { caseId: '$recordId' })
     wiredContactProductDetails(result) {
         this.wiredResult = result;
         if (result.data) {
             console.log('Data received from Apex:', JSON.stringify(result.data));
-            const productData = JSON.parse(JSON.stringify(result.data));
-            console.log('Parsed Product Data:', productData);
-
-            // Populate the product details
-            this.productDetails = [
-                {
-                    id: productData.product.Id,
-                    productName: productData.product.Name,
-                    homeCountry: productData.homeCountry, // corrected to use homeCountry from productData
-                    costPerMonth: productData.product.Cost_Per_Calendar_Month__c,
-                    atmFee: productData.product.ATM_Fee_Other_Currencies__c,
-                    replacementCost: productData.product.Card_Replacement_Cost__c
-                }
-            ];
+            
+            // Map the received data to the productDetails array
+            this.productDetails = result.data.map(entry => ({
+                id: entry.Id,
+                productName: entry.Product2.Name,
+                pricebookName: entry.Pricebook2.Name,
+                costPerMonth: entry.Cost_Per_Calendar_Month__c,
+                atmFee: entry.ATM_Fee_in_Other_Currencies__c,
+                replacementCost: entry.Card_Replacement_Cost__c
+            }));
 
             console.log('Product Details:', this.productDetails);
         } else if (result.error) {
-            this.productDetails = undefined;
-            this.homeCountry = undefined;
+            this.productDetails = [];
             console.error('Error received from Apex:', result.error);
         }
     }
 
-    // Handles the actions (edit, delete) from the Lightning Data Table
+    // Handle row actions (edit and delete)
     handleRowAction(event) {
         const actionName = event.detail.action.name;
         const row = event.detail.row;
@@ -74,16 +68,17 @@ export default class CaseContactProduct extends LightningElement {
         }
     }
 
-    // Opens the modal for editing the product
+    // Open the edit modal with the selected product
     editProduct(row) {
         this.productId = row.id;
         this.template.querySelector('c-product-edit-modal').openModal();
     }
 
-    // Deletes the product record and shows a success or error toast message
+    // Delete the selected product
     deleteProduct(row) {
         deleteRecord(row.id)
             .then(() => {
+                // Show success toast message
                 this.dispatchEvent(
                     new ShowToastEvent({
                         title: 'Success',
@@ -91,10 +86,11 @@ export default class CaseContactProduct extends LightningElement {
                         variant: 'success'
                     })
                 );
-                // Remove the deleted product from the list
+                // Remove the deleted product from the productDetails array
                 this.productDetails = this.productDetails.filter(product => product.id !== row.id);
             })
             .catch(error => {
+                // Show error toast message
                 this.dispatchEvent(
                     new ShowToastEvent({
                         title: 'Error deleting product',
@@ -105,7 +101,7 @@ export default class CaseContactProduct extends LightningElement {
             });
     }
 
-    // Handles the refresh action when the product is updated
+    // Handle product update and refresh the data
     handleProductUpdated() {
         // Refresh the product details
         return refreshApex(this.wiredResult);

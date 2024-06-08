@@ -2,15 +2,31 @@
 private class ContactInfoServiceTest {
     @testSetup
     static void setup() {
-        // Create a Product2 record
-        Product2 product = new Product2(
-            Name = 'Standard',
-            Cost_Per_Calendar_Month__c = '0',
-            ATM_Fee_Other_Currencies__c = '1.7%',
-            Card_Replacement_Cost__c = '6',
+        // Create a Pricebook
+        Pricebook2 standardPricebook = new Pricebook2(
+            Name = 'Standard Pricebook',
+            IsActive = true,
             Country__c = 'DE'
         );
+        insert standardPricebook;
+
+        // Create a Product2 record
+        Product2 product = new Product2(
+            Name = 'Standard'
+        );
         insert product;
+
+        // Create a PricebookEntry record
+        PricebookEntry pricebookEntry = new PricebookEntry(
+            Pricebook2Id = standardPricebook.Id,
+            Product2Id = product.Id,
+            UnitPrice = 0,
+            IsActive = true,
+            Cost_Per_Calendar_Month__c = '0',
+            ATM_Fee_in_Other_Currencies__c = '1.7%',
+            Card_Replacement_Cost__c = '6'
+        );
+        insert pricebookEntry;
 
         // Create a Contact record and associate it with the product
         Contact contact = new Contact(

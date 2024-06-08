@@ -2,15 +2,31 @@
 public class CaseContactProductControllerTest {
     @testSetup
     static void setupTestData() {
-        // Create a Product2 record
-        Product2 product = new Product2(
-            Name = 'Standard',
-            Cost_Per_Calendar_Month__c = '0',
-            ATM_Fee_Other_Currencies__c = '1.7%',
-            Card_Replacement_Cost__c = '6',
+        // Create a Pricebook
+        Pricebook2 standardPricebook = new Pricebook2(
+            Name = 'Standard Pricebook',
+            IsActive = true,
             Country__c = 'DE'
         );
+        insert standardPricebook;
+
+        // Create a Product2 record
+        Product2 product = new Product2(
+            Name = 'Standard'
+        );
         insert product;
+
+        // Create a PricebookEntry record
+        PricebookEntry pricebookEntry = new PricebookEntry(
+            Pricebook2Id = standardPricebook.Id,
+            Product2Id = product.Id,
+            UnitPrice = 0,
+            IsActive = true,
+            Cost_Per_Calendar_Month__c = '0',
+            ATM_Fee_in_Other_Currencies__c = '1.7%',
+            Card_Replacement_Cost__c = '6'
+        );
+        insert pricebookEntry;
 
         // Create a Contact record and associate it with the product
         Contact contact = new Contact(
@@ -35,20 +51,18 @@ public class CaseContactProductControllerTest {
         Case testCase = [SELECT Id FROM Case LIMIT 1];
         
         Test.startTest();
-        Map<String, Object> result = CaseContactProductController.getContactProductDetails(testCase.Id);
+        List<PricebookEntry> result = CaseContactProductController.getContactProductDetails(testCase.Id);
         Test.stopTest();
 
         // Verify the result
         System.assertNotEquals(null, result, 'Result should not be null');
-        System.assertNotEquals(null, result.get('product'), 'Product should not be null');
-        System.assertEquals('DE', result.get('homeCountry'), 'Home country should be DE');
-        
-        Product2 product = (Product2) result.get('product');
-        System.assertEquals('Standard', product.Name, 'Product name should be Standard');
-        System.assertEquals('0', product.Cost_Per_Calendar_Month__c, 'Cost per calendar month should be 0');
-        System.assertEquals('1.7%', product.ATM_Fee_Other_Currencies__c, 'ATM fee in other currencies should be 1.7%');
-        System.assertEquals('6', product.Card_Replacement_Cost__c, 'Card replacement cost should be 6');
-        System.assertEquals('DE', product.Country__c, 'Country should be DE');
+        System.assertEquals(1, result.size(), 'There should be one PricebookEntry');
+
+        PricebookEntry pricebookEntry = result[0];
+        System.assertEquals('Standard', pricebookEntry.Product2.Name, 'Product name should be Standard');
+        System.assertEquals('0', pricebookEntry.Cost_Per_Calendar_Month__c, 'Cost per calendar month should be 0');
+        System.assertEquals('1.7%', pricebookEntry.ATM_Fee_in_Other_Currencies__c, 'ATM fee in other currencies should be 1.7%');
+        System.assertEquals('6', pricebookEntry.Card_Replacement_Cost__c, 'Card replacement cost should be 6');
     }
 
     @isTest
@@ -58,11 +72,11 @@ public class CaseContactProductControllerTest {
         insert testCase;
         
         Test.startTest();
-        Map<String, Object> result = CaseContactProductController.getContactProductDetails(testCase.Id);
+        List<PricebookEntry> result = CaseContactProductController.getContactProductDetails(testCase.Id);
         Test.stopTest();
 
         // Verify the result
-        System.assertEquals(null, result, 'Result should be null when there is no contact');
+        System.assertEquals(0, result.size(), 'Result should be empty when there is no contact');
     }
 
     @isTest
@@ -83,10 +97,10 @@ public class CaseContactProductControllerTest {
         insert testCase;
         
         Test.startTest();
-        Map<String, Object> result = CaseContactProductController.getContactProductDetails(testCase.Id);
+        List<PricebookEntry> result = CaseContactProductController.getContactProductDetails(testCase.Id);
         Test.stopTest();
 
         // Verify the result
-        System.assertEquals(null, result, 'Result should be null when there is no product');
+        System.assertEquals(0, result.size(), 'Result should be empty when there is no product');
     }
 }
